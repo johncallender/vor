@@ -11,9 +11,10 @@ import unicodecsv as csv
 from bs4 import BeautifulSoup
 from selenium import webdriver
 
+PAGE_DEPTH       = 10 # how many pages deep to scrape
 BASE_PATH        = '/Users/jcallender/work/vor/data/'
 FULL_FILE        = BASE_PATH + 'all_videos.csv'
-INCREMENTAL_FILE = BASE_PATH = 'incremental_videos.csv'
+INCREMENTAL_FILE = BASE_PATH + 'incremental_videos.csv'
 
 # obr data
 leg_1_obr = {
@@ -57,22 +58,31 @@ pretty_leg = {
 }
 
 def main():
+    all_videos = read_full_file()
+    seen = {}
+    for item in all_videos:
+        seen_key = get_seen_key(item)
+        seen[seen_key] = True
     browser   = webdriver.Chrome('/Users/jcallender/bin/chromedriver')
     url       = "http://www.volvooceanrace.com/en/raw.html"
     browser.get(url)
 
+    # display videos-only link via xpath click
     # //*[@id="angular-raw"]/header/ul/li[4]/a
     enable_video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[4]/a")
     if enable_video_link and enable_video_link.is_enabled():
         enable_video_link.click()
 
+    # click videos-only link via xpath click
     # //*[@id="angular-raw"]/header/ul/li[4]/ul/li[3]/a
     video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[4]/ul/li[3]/a")
     if video_link and video_link.is_enabled():
         video_link.click()
         time.sleep(10)
 
-    for i in range(0, 20):
+    # 20 pages of just videos ought to cover the whole leg. can probably reduce this
+    # quite a bit once I'm running it incrementally.
+    for i in range(0, PAGE_DEPTH):
         load_more_button = browser.find_element_by_css_selector('a.load-more-bt')
         if load_more_button and load_more_button.is_enabled():
             try:
@@ -93,7 +103,7 @@ def main():
         item = scrape_item(browser, raw_item)
         items.append(item)
 
-    full_file_data = []
+    incremental_videos = []
     for item in items:
         if item['type'] != 'video':
             continue
@@ -103,19 +113,30 @@ def main():
             'Team': team_long_name[item['team']],
             'OBR': obr[item['leg']][item['team']],
             'Video': """=HYPERLINK("%s", IMAGE("%s"))""" % (item['source_url'], item['preview_url']),
+            'Seconds': '',
             'Length': '',
             'People': '',
             'Description': '',
             'Tags': '',
         }
-        full_file_data.append(pretty_data)
 
-    with open(FULL_FILE, 'w') as full_file:
-        # fieldnames = ['datetime', 'leg', 'team', 'type', 'preview_url', 'source_url']
-        fieldnames = ['Datetime', 'Leg', 'Team', 'OBR', 'Video', 'Length', 'People', 'Description', 'Tags']
-        writer = csv.DictWriter(full_file, fieldnames=fieldnames)
+        seen_key = get_seen_key(pretty_data)
+        if seen_key in seen:
+            # we've reached a video we processed in a previous run, so stop
+            break
+        incremental_videos.append(pretty_data)
+
+    all_videos = incremental_videos + all_videos
+    pretty_fieldnames = get_pretty_fieldnames()
+    with open(FULL_FILE, 'wb') as full_file:
+        writer = csv.DictWriter(full_file, fieldnames=pretty_fieldnames)
         writer.writeheader()
-        for item in full_file_data:
+        for item in all_videos:
+            writer.writerow(item)
+    with open(INCREMENTAL_FILE, 'wb') as incremental_file:
+        writer = csv.DictWriter(incremental_file, fieldnames=pretty_fieldnames)
+        # unlike the full file, the incremental file doesn't get a header row
+        for item in incremental_videos:
             writer.writerow(item)
 
     # TBD:
@@ -171,6 +192,19 @@ def scrape_video_item(raw_item, item):
     item['source_url'] = re.sub(r'_[0-9]{5}_[0-9x]+\.jpg$', '_HD.mp4', item['source_url'])
     return item
 
+def read_full_file():
+    all_videos = []
+    with open(FULL_FILE, 'rb') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            all_videos.append(row)
+    return all_videos
+
+def get_seen_key(item):
+    return(item['Datetime'] + item['Leg'] + item['Team'] + item['Video'])
+
+def get_pretty_fieldnames():
+    return ['Datetime', 'Leg', 'Team', 'OBR', 'Video', 'Seconds', 'Length', 'People', 'Description', 'Tags']
 
 main()
 
