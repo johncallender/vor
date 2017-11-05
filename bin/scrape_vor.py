@@ -3,6 +3,8 @@
 
 # scrape_vor.py - load VOR website's Raw Content page using JS to scrape new media
 
+from __future__ import print_function
+
 import sys
 import pprint
 import re
@@ -11,12 +13,26 @@ import unicodecsv as csv
 from bs4 import BeautifulSoup
 from selenium import webdriver
 
-PAGE_DEPTH       = 10 # how many pages deep to scrape
+# for Google Sheets API
+from apiclient import discovery
+from httplib2 import Http
+from oauth2client import file, client, tools
+
+PAGE_DEPTH       = 5 # how many pages deep to scrape
 BASE_PATH        = '/Users/jcallender/work/vor/data/'
 FULL_FILE        = BASE_PATH + 'all_videos.csv'
 INCREMENTAL_FILE = BASE_PATH + 'incremental_videos.csv'
 
 # obr data
+leg_2_obr = {
+    'team-akzonobel': 'James Blake',
+    'dongfeng-race-team': 'Jérémie Lecaudey',
+    'mapfre': u'Ugo Fonollá',
+    'vestas-11th-hour-racing': 'Martin Keruzore',
+    'team-sun-hung-kai-scallywag': 'Konrad Frost',
+    'turn-the-tide-on-plastic': 'Sam Greenfield',
+    'team-brunel': 'Richard Edwards',
+}
 leg_1_obr = {
     'team-akzonobel': 'Konrad Frost',
     'dongfeng-race-team': 'Richard Edwards',
@@ -38,6 +54,7 @@ prologue_obr = {
 obr = {
     'prologue': prologue_obr,
     'leg-01': leg_1_obr,
+    'leg-02': leg_2_obr,
 }
 
 # team data
@@ -55,10 +72,23 @@ team_long_name = {
 pretty_leg = {
     'prologue': 'Prologue',
     'leg-01': '1',
+    'leg-02': '2',
 }
 
+# Google Sheets API access
+SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
+store = file.Storage('/Users/jcallender/work/vor/etc/passwords/storage.json')
+creds = store.get()
+if not creds or creds.invalid:
+    flow = client.flow_from_clientsecrets('/Users/jcallender/work/vor/etc/passwords/client_id.json', SCOPES)
+    creds = tools.run_flow(flow, store)
+SHEETS = discovery.build('sheets', 'v4', http=creds.authorize(Http()))
+
+SHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8'
+# SHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # copy for testing
+
 def main():
-    all_videos = read_full_file()
+    all_videos = read_full_spreadsheet()
     seen = {}
     for item in all_videos:
         seen_key = get_seen_key(item)
@@ -68,20 +98,24 @@ def main():
     browser.get(url)
 
     # display videos-only link via xpath click
+    # leg 1 version:
     # //*[@id="angular-raw"]/header/ul/li[4]/a
-    enable_video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[4]/a")
+    # leg 2 version:
+    # //*[@id="angular-raw"]/header/ul/li[3]/a
+    enable_video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[3]/a")
     if enable_video_link and enable_video_link.is_enabled():
         enable_video_link.click()
 
     # click videos-only link via xpath click
+    # leg 1 version:
     # //*[@id="angular-raw"]/header/ul/li[4]/ul/li[3]/a
-    video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[4]/ul/li[3]/a")
+    # leg 2 version:
+    # //*[@id="angular-raw"]/header/ul/li[3]/ul/li[3]/a
+    video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a")
     if video_link and video_link.is_enabled():
         video_link.click()
         time.sleep(10)
 
-    # 20 pages of just videos ought to cover the whole leg. can probably reduce this
-    # quite a bit once I'm running it incrementally.
     for i in range(0, PAGE_DEPTH):
         load_more_button = browser.find_element_by_css_selector('a.load-more-bt')
         if load_more_button and load_more_button.is_enabled():
@@ -103,7 +137,7 @@ def main():
         item = scrape_item(browser, raw_item)
         items.append(item)
 
-    incremental_videos = []
+    new_videos = []
     for item in items:
         if item['type'] != 'video':
             continue
@@ -113,35 +147,29 @@ def main():
             'Team': team_long_name[item['team']],
             'OBR': obr[item['leg']][item['team']],
             'Video': """=HYPERLINK("%s", IMAGE("%s"))""" % (item['source_url'], item['preview_url']),
-            'Seconds': '',
-            'Length': '',
-            'People': '',
-            'Description': '',
-            'Tags': '',
         }
-
         seen_key = get_seen_key(pretty_data)
         if seen_key in seen:
             # we've reached a video we processed in a previous run, so stop
             break
-        incremental_videos.append(pretty_data)
+        new_videos.append(
+            [
+                pretty_data['Datetime'],
+                pretty_data['Leg'],
+                pretty_data['Team'],
+                pretty_data['OBR'],
+                pretty_data['Video'],
+            ],
+        )
 
-    all_videos = incremental_videos + all_videos
-    pretty_fieldnames = get_pretty_fieldnames()
-    with open(FULL_FILE, 'wb') as full_file:
-        writer = csv.DictWriter(full_file, fieldnames=pretty_fieldnames)
-        writer.writeheader()
-        for item in all_videos:
-            writer.writerow(item)
-    with open(INCREMENTAL_FILE, 'wb') as incremental_file:
-        writer = csv.DictWriter(incremental_file, fieldnames=pretty_fieldnames)
-        # unlike the full file, the incremental file doesn't get a header row
-        for item in incremental_videos:
-            writer.writerow(item)
-
-    # TBD:
-    # - automatically update the sheet
-    # - schedule the job to run under cron (or the equivalent)
+    # write incremental_videos as new rows in the Google spreadsheet
+    body = { 'values': new_videos }
+    result = SHEETS.spreadsheets().values().append(
+        spreadsheetId=SHEET_ID,
+        range='Raw Content',
+        valueInputOption='USER_ENTERED',
+        body=body
+    ).execute()
 
 def scrape_item(browser, raw_item):
     item = {}
@@ -192,16 +220,19 @@ def scrape_video_item(raw_item, item):
     item['source_url'] = re.sub(r'_[0-9]{5}_[0-9x]+\.jpg$', '_HD.mp4', item['source_url'])
     return item
 
-def read_full_file():
+def read_full_spreadsheet():
     all_videos = []
-    with open(FULL_FILE, 'rb') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            all_videos.append(row)
+    result = SHEETS.spreadsheets().values().get(
+        spreadsheetId=SHEET_ID, range='Raw Content'
+    ).execute()
+    values = result.get('values', [])
+    headers = values.pop(0)
+    for row in values:
+        all_videos.append(dict(zip(headers, row)))
     return all_videos
 
 def get_seen_key(item):
-    return(item['Datetime'] + item['Leg'] + item['Team'] + item['Video'])
+    return(item['Datetime'] + item['Leg'] + item['Team'])
 
 def get_pretty_fieldnames():
     return ['Datetime', 'Leg', 'Team', 'OBR', 'Video', 'Seconds', 'Length', 'People', 'Description', 'Tags']
