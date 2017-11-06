@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/local/bin/python
 # -*- coding: utf-8 -*-
 
 # scrape_vor.py - load VOR website's Raw Content page using JS to scrape new media
