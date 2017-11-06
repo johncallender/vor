@@ -18,6 +18,9 @@ from apiclient import discovery
 from httplib2 import Http
 from oauth2client import file, client, tools
 
+SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
+# SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
+
 PAGE_DEPTH       = 5 # how many pages deep to scrape
 BASE_PATH        = '/Users/jcallender/work/vor/data/'
 FULL_FILE        = BASE_PATH + 'all_videos.csv'
@@ -38,13 +41,13 @@ leg_1_obr = {
     'dongfeng-race-team': 'Richard Edwards',
     'mapfre': u'Ugo Fonollá',
     'vestas-11th-hour-racing': 'James Blake',
-    'team-sun-hung-kai-scallywag': 'Jeremie Lecaudey',
+    'team-sun-hung-kai-scallywag': 'Jérémie Lecaudey',
     'turn-the-tide-on-plastic': 'Jen Edney',
     'team-brunel': u'Martin Keruzoré',
 }
 prologue_obr = {
     'team-akzonobel': 'James Blake',
-    'dongfeng-race-team': 'Jeremie Lecaudey',
+    'dongfeng-race-team': 'Jérémie Lecaudey',
     'mapfre': 'Jen Edney',
     'vestas-11th-hour-racing': u'Martin Keruzoré',
     'team-sun-hung-kai-scallywag': 'Konrad Frost',
@@ -83,9 +86,6 @@ if not creds or creds.invalid:
     flow = client.flow_from_clientsecrets('/Users/jcallender/work/vor/etc/passwords/client_id.json', SCOPES)
     creds = tools.run_flow(flow, store)
 SHEETS = discovery.build('sheets', 'v4', http=creds.authorize(Http()))
-
-SHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8'
-# SHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # copy for testing
 
 def main():
     all_videos = read_full_spreadsheet()
@@ -147,6 +147,8 @@ def main():
             'Team': team_long_name[item['team']],
             'OBR': obr[item['leg']][item['team']],
             'Video': """=HYPERLINK("%s", IMAGE("%s"))""" % (item['source_url'], item['preview_url']),
+            'Seconds': '',
+            'Length': '=INDIRECT(ADDRESS(ROW(), COLUMN()-1))/(60*60*24)',
         }
         seen_key = get_seen_key(pretty_data)
         if seen_key in seen:
@@ -159,17 +161,63 @@ def main():
                 pretty_data['Team'],
                 pretty_data['OBR'],
                 pretty_data['Video'],
+                pretty_data['Seconds'],
+                pretty_data['Length'],
             ],
         )
 
     # write incremental_videos as new rows in the Google spreadsheet
     body = { 'values': new_videos }
     result = SHEETS.spreadsheets().values().append(
-        spreadsheetId=SHEET_ID,
+        spreadsheetId=SPREADSHEET_ID,
         range='Raw Content',
         valueInputOption='USER_ENTERED',
         body=body
     ).execute()
+
+    # get the SHEET_ID of sheet 0
+    result = SHEETS.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+    SHEET_ID = result['sheets'][0]['properties']['sheetId']
+
+    requests = [
+        # tidy up the sheet: sort by Datetime (descending):
+        {
+            'sortRange': {
+                'range': {
+                    'sheetId': SHEET_ID,
+                    'startRowIndex': 1,
+                },
+                'sortSpecs': [
+                    {
+                        'dimensionIndex': 0,
+                        'sortOrder': 'DESCENDING',
+                    },
+                ],
+            },
+
+        },
+        # ...and copy the format of row 100 to the whole sheet (to get the
+        # new rows formatted properly)
+        {
+            'copyPaste': {
+                'source': {
+                    'sheetId': SHEET_ID,
+                    'startRowIndex': 99,
+                    'endRowIndex': 100,
+                },
+                'destination': {
+                    'sheetId': SHEET_ID,
+                    'startRowIndex': 1,
+                },
+                'pasteType': 'PASTE_FORMAT',
+                'pasteOrientation': 'NORMAL',
+            },
+        },
+    ]
+
+    body = { 'requests': requests }
+    result = SHEETS.spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID, body=body).execute()
 
 def scrape_item(browser, raw_item):
     item = {}
@@ -223,7 +271,7 @@ def scrape_video_item(raw_item, item):
 def read_full_spreadsheet():
     all_videos = []
     result = SHEETS.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID, range='Raw Content'
+        spreadsheetId=SPREADSHEET_ID, range='Raw Content'
     ).execute()
     values = result.get('values', [])
     headers = values.pop(0)
