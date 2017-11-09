@@ -9,7 +9,6 @@ import sys
 import pprint
 import re
 import time
-import unicodecsv as csv
 from bs4 import BeautifulSoup
 from selenium import webdriver
 
@@ -22,9 +21,6 @@ SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
 # SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
 
 PAGE_DEPTH       = 5 # how many pages deep to scrape
-BASE_PATH        = '/Users/jcallender/work/vor/data/'
-FULL_FILE        = BASE_PATH + 'all_videos.csv'
-INCREMENTAL_FILE = BASE_PATH + 'incremental_videos.csv'
 
 # obr data
 leg_2_obr = {
