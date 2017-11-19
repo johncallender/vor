@@ -11,6 +11,8 @@ import re
 import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
+import urllib2
+import json
 
 # for Google Sheets API
 from apiclient import discovery
@@ -89,6 +91,21 @@ def main():
     for item in all_videos:
         seen_key = get_seen_key(item)
         seen[seen_key] = True
+
+    # Get metadata from vor's raw.json file. Unfortunately, they have a bug
+    # (or something) that makes it so they don't include every item in the json
+    # file. So I need to keep scraping for now. But I use this data to link the
+    # Datetime column to the official VOR page for those items that are in the json file.
+    response = urllib2.urlopen('http://www.volvooceanrace.com/en/raw.json')
+    raw_json = response.read()
+    raw_json_items = json.loads(raw_json)
+
+    json_item = {}
+    for raw_item in raw_json_items:
+        item = process_item(raw_item)
+        json_item[get_seen_key(item)] = item
+
+    # Now do the actual scraping of the Volvo site to get the items.
     browser   = webdriver.Chrome('/Users/jcallender/bin/chromedriver')
     url       = "http://www.volvooceanrace.com/en/raw.html"
     browser.get(url)
@@ -137,14 +154,30 @@ def main():
     for item in items:
         if item['type'] != 'video':
             continue
+        pretty_datetime = ''
+        seen_key = get_seen_key(item)
+        if seen_key in json_item:
+            pretty_datetime = """=HYPERLINK("%s", "%s")""" % (json_item[seen_key]['vor_url'], item['raw_time'])
+        else:
+            pretty_datetime = item['raw_time']
         pretty_data = {
-            'Datetime': item['datetime'],
+            'Datetime': pretty_datetime,
             'Leg': pretty_leg[item['leg']],
-            'Team': team_long_name[item['team']],
-            'OBR': obr[item['leg']][item['team']],
-            'Video': """=HYPERLINK("%s", IMAGE("%s"))""" % (item['source_url'], item['preview_url']),
+            'Team': team_long_name[item['raw_team']],
+            'OBR': obr[item['leg']][item['raw_team']],
+            'Video': """=HYPERLINK("%s", IMAGE("%s"))""" % (item['media_url'], item['preview_url']),
             'Seconds': '',
             'Length': '=INDIRECT(ADDRESS(ROW(), COLUMN()-1))/(60*60*24)',
+            'People': '',
+            'Description': '',
+            'Tags': '',
+            'Other Boats': '',
+            'type': item['type'],
+            'preview_url': item['preview_url'],
+            'media_url': item['media_url'],
+            'vor_url': json_item[seen_key]['vor_url'] if seen_key in json_item else '',
+            'raw_time': item['raw_time'],
+            'raw_team': item['raw_team'],
         }
         seen_key = get_seen_key(pretty_data)
         if seen_key in seen:
@@ -159,6 +192,16 @@ def main():
                 pretty_data['Video'],
                 pretty_data['Seconds'],
                 pretty_data['Length'],
+                pretty_data['People'],
+                pretty_data['Description'],
+                pretty_data['Tags'],
+                pretty_data['Other Boats'],
+                pretty_data['type'],
+                pretty_data['preview_url'],
+                pretty_data['media_url'],
+                pretty_data['vor_url'],
+                pretty_data['raw_time'],
+                pretty_data['raw_team'],
             ],
         )
 
@@ -176,7 +219,7 @@ def main():
     SHEET_ID = result['sheets'][0]['properties']['sheetId']
 
     requests = [
-        # tidy up the sheet: sort by Datetime (descending):
+        # tidy up the sheet: sort by raw_datetime (descending):
         {
             'sortRange': {
                 'range': {
@@ -185,7 +228,7 @@ def main():
                 },
                 'sortSpecs': [
                     {
-                        'dimensionIndex': 0,
+                        'dimensionIndex': 15,
                         'sortOrder': 'DESCENDING',
                     },
                 ],
@@ -222,7 +265,7 @@ def scrape_item(browser, raw_item):
         item = scrape_date_item(raw_item, class_tags, item)
     else:
         item = scrape_non_date_item(browser, raw_item, class_tags, item)
-    item['datetime'] = raw_item.footer.time['datetime']
+    item['raw_time'] = raw_item.footer.time['datetime']
     return item
 
 def scrape_date_item(raw_item, class_tags, item):
@@ -234,7 +277,7 @@ def scrape_non_date_item(browser, raw_item, class_tags, item):
     item = {
         'leg': class_tags[2],
         'type': class_tags[3],
-        'team': class_tags[4],
+        'raw_team': class_tags[4],
     }
     if len(class_tags) >= 6:
         item['no-img'] = class_tags[5]
@@ -254,14 +297,46 @@ def scrape_social_item(raw_item, item):
     return item
 
 def scrape_photo_item(browser, raw_item, item):
-    item['source_url'] = raw_item.img['src']
+    item['media_url'] = raw_item.img['src']
     return item
 
 def scrape_video_item(raw_item, item):
     item['preview_url'] = raw_item.img['src']
-    item['source_url'] = item['preview_url']
-    item['source_url'] = re.sub(r'thumb/', '', item['source_url'])
-    item['source_url'] = re.sub(r'_[0-9]{5}_[0-9x]+\.jpg$', '_HD.mp4', item['source_url'])
+    item['media_url'] = item['preview_url']
+    item['media_url'] = re.sub(r'thumb/', '', item['media_url'])
+    item['media_url'] = re.sub(r'_[0-9]{5}_[0-9x]+\.jpg$', '_HD.mp4', item['media_url'])
+    return item
+
+def process_item(raw_item):
+    item = {}
+    item['raw_time'] = raw_item['date']
+    item['vor_url'] = raw_item['url']
+
+    class_tags = raw_item['class'].split()
+    item['leg'] = class_tags[0]
+    item['type'] = class_tags[1]
+    item['raw_team'] = class_tags[2]
+
+    if item['type'] == 'social':
+        item = process_social_item(raw_item, item)
+    elif item['type'] == 'photo':
+        item = process_photo_item(raw_item, item)
+    elif item['type'] == 'video':
+        item = process_video_item(raw_item, item)
+    else:
+        raise ValueError('Unable to determine item type for item: ' + str(raw_item))
+
+    return item
+
+def process_video_item(raw_item, item):
+    item['preview_url'] = raw_item['mediaVideo']['SD']['thumbnails']
+    item['media_url'] = raw_item['mediaVideo']['HD']['video']
+    return item
+
+def process_social_item(raw_item, item):
+    return item
+
+def process_photo_item(raw_item, item):
     return item
 
 def read_full_spreadsheet():
@@ -276,10 +351,32 @@ def read_full_spreadsheet():
     return all_videos
 
 def get_seen_key(item):
-    return(item['Datetime'] + item['Leg'] + item['Team'])
+    return(
+           ( item['raw_time'] if item.get('raw_time') else item['Datetime'] )
+         +   item['type']
+         + ( item['raw_team'] if item.get('raw_team') else item['Team'] )
+    )
 
 def get_pretty_fieldnames():
-    return ['Datetime', 'Leg', 'Team', 'OBR', 'Video', 'Seconds', 'Length', 'People', 'Description', 'Tags']
+    return [
+        'Datetime',
+        'Leg',
+        'Team',
+        'OBR',
+        'Video',
+        'Seconds',
+        'Length',
+        'People',
+        'Description',
+        'Tags',
+        'Other Boats',
+        'type',
+        'preview_url',
+        'media_url',
+        'vor_url',
+        'raw_time',
+        'raw_team',
+    ]
 
 main()
 
