@@ -25,6 +25,15 @@ SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
 PAGE_DEPTH = 2 # how many pages deep to scrape
 
 # obr data
+leg_3_obr = {
+    'team-akzonobel': 'James Blake',
+    'dongfeng-race-team': 'Martin Keruzore',
+    'mapfre': 'Jen Edney',
+    'vestas-11th-hour-racing': 'Sam Greenfield',
+    'team-sun-hung-kai-scallywag': 'Konrad Frost',
+    'turn-the-tide-on-plastic': 'Jérémie Lecaudey',
+    'team-brunel': u'Ugo Fonollá',
+}
 leg_2_obr = {
     'team-akzonobel': 'James Blake',
     'dongfeng-race-team': 'Jérémie Lecaudey',
@@ -56,6 +65,7 @@ obr = {
     'prologue': prologue_obr,
     'leg-01': leg_1_obr,
     'leg-02': leg_2_obr,
+    'leg-03': leg_3_obr,
 }
 
 # team data
@@ -74,6 +84,7 @@ pretty_leg = {
     'prologue': 'Prologue',
     'leg-01': '1',
     'leg-02': '2',
+    'leg-03': '3',
 }
 
 # Google Sheets API access
@@ -98,7 +109,11 @@ def main():
     # Datetime column to the official VOR page for those items that are in the json file.
     response = urllib2.urlopen('http://www.volvooceanrace.com/en/raw.json')
     raw_json = response.read()
-    raw_json_items = json.loads(raw_json)
+    raw_json_items = []
+    if is_json(raw_json):
+        raw_json_items = json.loads(raw_json)
+    else:
+        print("no json found; continuing")
 
     json_item = {}
     for raw_item in raw_json_items:
@@ -377,6 +392,13 @@ def get_pretty_fieldnames():
         'raw_time',
         'raw_team',
     ]
+
+def is_json(myjson):
+  try:
+    json_object = json.loads(myjson)
+  except ValueError, e:
+    return False
+  return True
 
 main()
 
