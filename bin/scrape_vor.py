@@ -78,10 +78,10 @@ pretty_leg = {
 
 # Google Sheets API access
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
-store = file.Storage('/Users/jbc/work/vor/etc/passwords/storage.json')
+store = file.Storage('/Users/jcallender/work/vor/etc/passwords/storage.json')
 creds = store.get()
 if not creds or creds.invalid:
-    flow = client.flow_from_clientsecrets('/Users/jbc/work/vor/etc/passwords/client_id.json', SCOPES)
+    flow = client.flow_from_clientsecrets('/Users/jcallender/work/vor/etc/passwords/client_id.json', SCOPES)
     creds = tools.run_flow(flow, store)
 SHEETS = discovery.build('sheets', 'v4', http=creds.authorize(Http()))
 
@@ -106,7 +106,7 @@ def main():
         json_item[get_seen_key(item)] = item
 
     # Now do the actual scraping of the Volvo site to get the items.
-    browser   = webdriver.Chrome('/Users/jbc/bin/chromedriver')
+    browser   = webdriver.Chrome('/Users/jcallender/bin/chromedriver')
     url       = "http://www.volvooceanrace.com/en/raw.html"
     browser.get(url)
 
