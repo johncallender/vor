@@ -26,6 +26,20 @@ SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
 PAGE_DEPTH = 5 # how many pages deep to scrape
 JSON_DAYS = 5 # how many days back from today to look for raw json files
 
+# display videos-only link via xpath click
+# leg 1 version:
+# //*[@id="angular-raw"]/header/ul/li[4]/a
+# leg 2 version:
+# //*[@id="angular-raw"]/header/ul/li[3]/a
+ENABLE_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/a"
+
+# click videos-only link via xpath click
+# leg 1 version:
+# //*[@id="angular-raw"]/header/ul/li[4]/ul/li[3]/a
+# leg 2 version:
+# //*[@id="angular-raw"]/header/ul/li[3]/ul/li[3]/a
+CLICK_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a"
+
 # obr data
 leg_3_obr = {
     'team-akzonobel': 'James Blake',
@@ -132,21 +146,10 @@ def main():
     url       = "http://www.volvooceanrace.com/en/raw.html"
     browser.get(url)
 
-    # display videos-only link via xpath click
-    # leg 1 version:
-    # //*[@id="angular-raw"]/header/ul/li[4]/a
-    # leg 2 version:
-    # //*[@id="angular-raw"]/header/ul/li[3]/a
-    enable_video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[3]/a")
+    enable_video_link = browser.find_element_by_xpath(ENABLE_VIDEOS_LINK_XPATH)
     if enable_video_link and enable_video_link.is_enabled():
         enable_video_link.click()
-
-    # click videos-only link via xpath click
-    # leg 1 version:
-    # //*[@id="angular-raw"]/header/ul/li[4]/ul/li[3]/a
-    # leg 2 version:
-    # //*[@id="angular-raw"]/header/ul/li[3]/ul/li[3]/a
-    video_link = browser.find_element_by_xpath("//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a")
+    video_link = browser.find_element_by_xpath(CLICK_VIDEOS_LINK_XPATH)
     if video_link and video_link.is_enabled():
         video_link.click()
         time.sleep(10)
