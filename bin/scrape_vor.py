@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 import urllib2
 import json
+import datetime
 
 # for Google Sheets API
 from apiclient import discovery
@@ -23,6 +24,7 @@ SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
 # SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
 
 PAGE_DEPTH = 5 # how many pages deep to scrape
+JSON_DAYS = 5 # how many days back from today to look for raw json files
 
 # obr data
 leg_3_obr = {
@@ -103,18 +105,23 @@ def main():
         seen_key = get_seen_key(item)
         seen[seen_key] = True
 
-    # Get metadata from vor's raw.json file. Unfortunately, they have a bug
-    # (or something) that makes it so they don't include every item in the json
-    # file. So I need to keep scraping for now. But I use this data to link the
-    # Datetime column to the official VOR page for those items that are in the json file.
-    response = urllib2.urlopen('http://www.volvooceanrace.com/en/raw.json')
-    raw_json = response.read()
+    # Get metadata from vor's json files. They now break it up by day, so try to
+    # get the last JSON_DAYS days' worth of json data.
+    # http://www.volvooceanrace.com/en/raw_days/yyyy-mm-dd.json
     raw_json_items = []
-    if is_json(raw_json):
-        raw_json_items = json.loads(raw_json)
-    else:
-        print("no json found; continuing")
-
+    now = datetime.datetime.utcnow()
+    for i in range(JSON_DAYS):
+        json_file_date = now - datetime.timedelta(days = i)
+        json_filename = 'http://www.volvooceanrace.com/en/raw_days/'
+        json_filename += json_file_date.strftime("%Y-%m-%d")
+        json_filename += '.json'
+        try:
+            response = urllib2.urlopen(json_filename)
+            raw_json = response.read()
+            if is_json(raw_json):
+                raw_json_items.extend( json.loads(raw_json) )
+        except urllib2.HTTPError:
+            print("no json file found for %s; continuing" % json_filename)
     json_item = {}
     for raw_item in raw_json_items:
         item = process_item(raw_item)
