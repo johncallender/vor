@@ -41,9 +41,25 @@ ENABLE_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/a"
 CLICK_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a"
 
 # obr data
+leg_6_obr = {
+    'team-akzonobel': 'Richard Edwards',
+    'dongfeng-race-team': 'Martin Keruzoré',
+    'mapfre': u'Ugo Fonollá',
+    'team-sun-hung-kai-scallywag': 'Jérémie Lecaudey',
+    'turn-the-tide-on-plastic': 'James Blake',
+    'team-brunel': 'Yann Riou',
+}
+leg_5_obr = {
+    'team-akzonobel': 'Richard Edwards',
+    'dongfeng-race-team': 'Martin Keruzoré',
+    'mapfre': u'Ugo Fonollá',
+    'team-sun-hung-kai-scallywag': 'Jérémie Lecaudey',
+    'turn-the-tide-on-plastic': 'James Blake',
+    'team-brunel': 'Yann Riou',
+}
 leg_4_obr = {
     'team-akzonobel': 'Sam Greenfield',
-    'dongfeng-race-team': 'Martin Keruzore',
+    'dongfeng-race-team': 'Martin Keruzoré',
     'mapfre': u'Ugo Fonollá',
     'vestas-11th-hour-racing': 'Amory Ross',
     'team-sun-hung-kai-scallywag': 'Konrad Frost',
@@ -52,7 +68,7 @@ leg_4_obr = {
 }
 leg_3_obr = {
     'team-akzonobel': 'James Blake',
-    'dongfeng-race-team': 'Martin Keruzore',
+    'dongfeng-race-team': 'Martin Keruzoré',
     'mapfre': 'Jen Edney',
     'vestas-11th-hour-racing': 'Sam Greenfield',
     'team-sun-hung-kai-scallywag': 'Konrad Frost',
@@ -63,7 +79,7 @@ leg_2_obr = {
     'team-akzonobel': 'James Blake',
     'dongfeng-race-team': 'Jérémie Lecaudey',
     'mapfre': u'Ugo Fonollá',
-    'vestas-11th-hour-racing': 'Martin Keruzore',
+    'vestas-11th-hour-racing': 'Martin Keruzoré',
     'team-sun-hung-kai-scallywag': 'Konrad Frost',
     'turn-the-tide-on-plastic': 'Sam Greenfield',
     'team-brunel': 'Richard Edwards',
@@ -92,6 +108,8 @@ obr = {
     'leg-02': leg_2_obr,
     'leg-03': leg_3_obr,
     'leg-04': leg_4_obr,
+    'leg-05': leg_5_obr,
+    'leg-06': leg_6_obr,
 }
 
 # team data
@@ -112,6 +130,8 @@ pretty_leg = {
     'leg-02': '2',
     'leg-03': '3',
     'leg-04': '4',
+    'leg-05': '5',
+    'leg-06': '6',
 }
 
 # Google Sheets API access
