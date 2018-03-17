@@ -41,6 +41,15 @@ ENABLE_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/a"
 CLICK_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a"
 
 # obr data
+leg_7_obr = {
+    'team-akzonobel': 'James Blake',
+    'dongfeng-race-team': 'Martin Keruzoré',
+    'mapfre': u'Ugo Fonollá',
+    'team-sun-hung-kai-scallywag': 'Konrad Frost',
+    'turn-the-tide-on-plastic': 'Sam Greenfield',
+    'team-brunel': 'Yann Riou',
+    'vestas-11th-hour-racing': 'Jérémie Lecaudey',
+}
 leg_6_obr = {
     'team-akzonobel': 'Richard Edwards',
     'dongfeng-race-team': 'Martin Keruzoré',
@@ -110,6 +119,7 @@ obr = {
     'leg-04': leg_4_obr,
     'leg-05': leg_5_obr,
     'leg-06': leg_6_obr,
+    'leg-07': leg_7_obr,
 }
 
 # team data
@@ -132,6 +142,7 @@ pretty_leg = {
     'leg-04': '4',
     'leg-05': '5',
     'leg-06': '6',
+    'leg-07': '7',
 }
 
 # Google Sheets API access
