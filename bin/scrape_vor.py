@@ -20,11 +20,14 @@ from apiclient import discovery
 from httplib2 import Http
 from oauth2client import file, client, tools
 
-SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
-# SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
+# SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
+SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
 
-PAGE_DEPTH = 5 # how many pages deep to scrape
-JSON_DAYS = 5 # how many days back from today to look for raw json files
+# USER_DIR = '/Users/jbc'
+USER_DIR = '/Users/jcallender'
+
+PAGE_DEPTH = 2 # how many pages deep to scrape
+JSON_DAYS = 2 # how many days back from today to look for raw json files
 
 # display videos-only link via xpath click
 # leg 1 version:
@@ -147,10 +150,12 @@ pretty_leg = {
 
 # Google Sheets API access
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
-store = file.Storage('/Users/jbc/work/vor/etc/passwords/storage.json')
+# store = file.Storage('/Users/jbc/work/vor/etc/passwords/storage.json')
+store = file.Storage(USER_DIR + '/work/vor/etc/passwords/storage.json')
 creds = store.get()
 if not creds or creds.invalid:
-    flow = client.flow_from_clientsecrets('/Users/jbc/work/vor/etc/passwords/client_id.json', SCOPES)
+#    flow = client.flow_from_clientsecrets('/Users/jbc/work/vor/etc/passwords/client_id.json', SCOPES)
+    flow = client.flow_from_clientsecrets(USER_DIR + '/work/vor/etc/passwords/client_id.json', SCOPES)
     creds = tools.run_flow(flow, store)
 SHEETS = discovery.build('sheets', 'v4', http=creds.authorize(Http()))
 
@@ -184,7 +189,8 @@ def main():
         json_item[get_seen_key(item)] = item
 
     # Now do the actual scraping of the Volvo site to get the items.
-    browser   = webdriver.Chrome('/Users/jbc/bin/chromedriver')
+#     browser   = webdriver.Chrome('/Users/jbc/bin/chromedriver')
+    browser   = webdriver.Chrome(USER_DIR + '/bin/chromedriver')
     url       = "http://www.volvooceanrace.com/en/raw.html"
     browser.get(url)
 
@@ -370,8 +376,8 @@ def scrape_photo_item(browser, raw_item, item):
 def scrape_video_item(raw_item, item):
     item['preview_url'] = raw_item.img['src']
     item['media_url'] = item['preview_url']
-    item['media_url'] = re.sub(r'thumb/', '', item['media_url'])
-    item['media_url'] = re.sub(r'_[0-9]{5}_[0-9x]+\.jpg$', '_HD.mp4', item['media_url'])
+    item['media_url'] = re.sub(r'https://i.ytimg.com/vi/', 'https://www.youtube.com/watch?v=', item['media_url'])
+    item['media_url'] = re.sub(r'/maxresdefault.jpg$', '', item['media_url'])
     return item
 
 def process_item(raw_item):
@@ -396,8 +402,8 @@ def process_item(raw_item):
     return item
 
 def process_video_item(raw_item, item):
-    item['preview_url'] = raw_item['mediaVideo']['SD']['thumbnails']
-    item['media_url'] = raw_item['mediaVideo']['HD']['video']
+    item['preview_url'] = raw_item['media']
+    item['media_url'] = raw_item['mediaVideo']['HD']
     return item
 
 def process_social_item(raw_item, item):
@@ -603,5 +609,80 @@ https://volvooceanrace-2017-18.s3.amazonaws.com/videos/cropped/m105094_13-01-171
 * truncate path to remove the trailing 'thumb/'
 * truncate to the following portion of the filename: m{^[a-z]\d+_\d{2}\-\d{2}\-\d+[-a-z]+\d+}
 * append '_HD.mp4'
+
+A few days into Leg 7, they switched the format for a video item to this:
+
+<li class="content-angular-raw-item more-items-item leg-07 video mapfre" ng-repeat="item in pagedItems" style="position: absolute; left: 0px; top: 116px;">
+    <div class="item-img-container" on-finish-render="" ng-style="imgBackgroundOverlay(item)">
+        <div class="video-play"></div>
+        <div class="item-img-mask"></div>
+        <!-- ngIf: item.mediaShow && !item.mediaVideo -->
+        <!-- ngIf: item.mediaVideoMulti && item.youtube == 0 -->
+        <!-- ngIf: item.mediaVideoMulti && item.youtube == 1 --><img ng-src="https://i.ytimg.com/vi/43kpgCkqcwA/maxresdefault.jpg" class="more-items-img ng-scope hide show spinner-show" imageonload="" ng-if="item.mediaVideoMulti &amp;&amp; item.youtube == 1" src="https://i.ytimg.com/vi/43kpgCkqcwA/maxresdefault.jpg" style=""><!-- end ngIf: item.mediaVideoMulti && item.youtube == 1 -->
+        <!-- ngIf: item.mediaVideo && !item.mediaVideoMulti -->
+
+    </div>
+    <div class="wrapper">
+        <!-- ngIf: item.icon -->
+        <!-- ngIf: item.category --><div class="item-category ng-binding ng-scope" ng-if="item.category">Video</div><!-- end ngIf: item.category -->
+        <!-- ngIf: item.subcategory -->
+        <!-- ngIf: item.tagName -->
+        <h2 class="ng-binding">13_07_180320_MPF_00001.mp4</h2>
+        <!-- ngIf: item.subtitle -->
+        <!-- ngIf: item.short_text -->
+        <!-- ngIf: item.plus_text -->
+        <!-- ngIf: item.plus_text -->
+        <!-- ngIf: item.code -->
+        <!-- ngIf: item.social -->
+    </div>
+    <footer>
+        <!-- ngIf: item.subsection --><div class="item-subsection ng-scope ng-isolate-scope" ng-bind-html-unsafe="item.subsection" ng-if="item.subsection"><div ng-bind-html="trustedHtml" class="ng-binding">MAPFRE</div></div><!-- end ngIf: item.subsection -->
+        <!-- ngIf: item.date --><time class="item-time ng-scope" ng-if="item.date" datetime="2018-03-20 11:38:47">
+            <span class="date ng-binding">March 20, 2018 </span>
+            <span class="date-time ng-binding">11:38 UTC</span>
+        </time><!-- end ngIf: item.date -->
+    </footer>
+    <a class="all-box-link" ng-click="openModalData('modal-angular-data', item)" analytics-on="" analytics-event="Video" analytics-category="Raw Content" analytics-label="ID-7970 | 13_07_180320_MPF_00001.mp4 | leg-07 video mapfre" target="_self"></a>
+</li>
+
+...in which this is the youtube preview image:
+
+https://i.ytimg.com/vi/43kpgCkqcwA/maxresdefault.jpg
+
+...and it ends up turning into an unlisted video played from the "Volvo Ocean Race RAW"
+account here:
+
+https://www.youtube.com/watch?v=43kpgCkqcwA
+
+For the "process" step (where we read from their json metadata file to add the links to
+their pages), the video entries now look like this:
+
+{
+  "id": "7970",
+  "class": "leg-07 video mapfre",
+  "subsection": "MAPFRE",
+  "category": "Video",
+  "date": "2018-03-20 11:38:47",
+  "title": "13_07_180320_MPF_00001.mp4",
+  "short_text": "",
+  "text": "Latest video from MAPFRE at 20\/03\/2018 11:38 UTC<br>Watch it now!",
+  "social": "",
+  "blank": "",
+  "main": "1",
+  "caption": "RAW - MAPFRE In the Volvo Ocean Race - 2018-03-20T11:33:16+00:00\n\nDon\u2019t forget to subscribe for more Volvo Ocean Race: https:\/\/goo.gl\/BzBCwU\n\nCheck out our full video catalogue: https:\/\/goo.gl\/nrB9ay\nLike Volvo Ocean Race on Facebook: https:\/\/www.facebook.com\/volvooceanrace\/\nFollow on Twitter: https:\/\/twitter.com\/volvooceanrace\/\nFollow on Instagram: https:\/\/www.instagram.com\/volvooceanrace\/\nRead More: http:\/\/www.volvooceanrace.com",
+  "author": "",
+  "youtube": "1",
+  "url": "https:\/\/www.volvooceanrace.com\/en\/raw\/7970.html",
+  "media": "https:\/\/i.ytimg.com\/vi\/43kpgCkqcwA\/maxresdefault.jpg",
+  "mediaMobile": "https:\/\/i.ytimg.com\/vi\/43kpgCkqcwA\/maxresdefault.jpg",
+  "mediaFirst": [
+
+  ],
+  "mediaExtra": "https:\/\/i.ytimg.com\/vi\/43kpgCkqcwA\/maxresdefault.jpg",
+  "mediaVideo": {
+    "SD": "https:\/\/www.youtube.com\/watch?v=43kpgCkqcwA",
+    "HD": "https:\/\/www.youtube.com\/watch?v=43kpgCkqcwA"
+  }
+}
 
 '''
