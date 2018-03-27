@@ -23,8 +23,8 @@ from oauth2client import file, client, tools
 SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
 # SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
 
-USER_DIR = '/Users/jbc'
-# USER_DIR = '/Users/jcallender'
+# USER_DIR = '/Users/jbc'
+USER_DIR = '/Users/jcallender'
 
 PAGE_DEPTH = 3 # how many pages deep to scrape
 JSON_DAYS = 3 # how many days back from today to look for raw json files
@@ -34,7 +34,7 @@ JSON_DAYS = 3 # how many days back from today to look for raw json files
 # //*[@id="angular-raw"]/header/ul/li[4]/a
 # leg 2 version:
 # //*[@id="angular-raw"]/header/ul/li[3]/a
-ENABLE_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/a"
+ENABLE_VIDEOS_LINK_XPATH = '//*[@id="angular-raw"]/header/ul/li[3]/a'
 
 # click videos-only link via xpath click
 # leg 1 version:
@@ -150,11 +150,9 @@ pretty_leg = {
 
 # Google Sheets API access
 SCOPES = 'https://www.googleapis.com/auth/spreadsheets'
-# store = file.Storage('/Users/jbc/work/vor/etc/passwords/storage.json')
 store = file.Storage(USER_DIR + '/work/vor/etc/passwords/storage.json')
 creds = store.get()
 if not creds or creds.invalid:
-#    flow = client.flow_from_clientsecrets('/Users/jbc/work/vor/etc/passwords/client_id.json', SCOPES)
     flow = client.flow_from_clientsecrets(USER_DIR + '/work/vor/etc/passwords/client_id.json', SCOPES)
     creds = tools.run_flow(flow, store)
 SHEETS = discovery.build('sheets', 'v4', http=creds.authorize(Http()))
@@ -189,10 +187,15 @@ def main():
         json_item[get_seen_key(item)] = item
 
     # Now do the actual scraping of the Volvo site to get the items.
-#     browser   = webdriver.Chrome('/Users/jbc/bin/chromedriver')
     browser   = webdriver.Chrome(USER_DIR + '/bin/chromedriver')
     url       = "http://www.volvooceanrace.com/en/raw.html"
     browser.get(url)
+
+    # temporary popup window for statement after the loss of John Fisher :-(
+    close_bt_link = browser.find_element_by_xpath('//*[@id="close-bt"]')
+    if close_bt_link:
+        close_bt_link.click()
+        time.sleep(3)
 
     enable_video_link = browser.find_element_by_xpath(ENABLE_VIDEOS_LINK_XPATH)
     if enable_video_link and enable_video_link.is_enabled():
