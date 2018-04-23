@@ -44,6 +44,15 @@ ENABLE_VIDEOS_LINK_XPATH = '//*[@id="angular-raw"]/header/ul/li[3]/a'
 CLICK_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a"
 
 # obr data
+leg_8_obr = {
+    'team-akzonobel': 'Brian Carlin',
+    'dongfeng-race-team': 'Jérémie Lecaudey',
+    'mapfre': u'Ugo Fonollá',
+    'team-sun-hung-kai-scallywag': 'Richard Edwards',
+    'turn-the-tide-on-plastic': 'James Blake',
+    'team-brunel': 'Sam Greenfield',
+    'vestas-11th-hour-racing': 'Martin Keruzoré',
+}
 leg_7_obr = {
     'team-akzonobel': 'James Blake',
     'dongfeng-race-team': 'Martin Keruzoré',
@@ -123,6 +132,7 @@ obr = {
     'leg-05': leg_5_obr,
     'leg-06': leg_6_obr,
     'leg-07': leg_7_obr,
+    'leg-08': leg_8_obr,
 }
 
 # team data
