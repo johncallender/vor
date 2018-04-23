@@ -23,8 +23,8 @@ from oauth2client import file, client, tools
 SPREADSHEET_ID = '1WVwCp5qwKKfOeAnyFJyDjAIINpPhrj_FQC20DJ7StW8' # live copy
 # SPREADSHEET_ID = '1A6W6VQXGJgcLDV-omZrbrghY7UypKJqSmaKxHQm-EfA' # QA copy for testing
 
-# USER_DIR = '/Users/jbc'
-USER_DIR = '/Users/jcallender'
+USER_DIR = '/Users/jbc'
+# USER_DIR = '/Users/jcallender'
 
 PAGE_DEPTH = 3 # how many pages deep to scrape
 JSON_DAYS = 3 # how many days back from today to look for raw json files
