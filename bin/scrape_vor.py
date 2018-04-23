@@ -44,6 +44,16 @@ ENABLE_VIDEOS_LINK_XPATH = '//*[@id="angular-raw"]/header/ul/li[3]/a'
 CLICK_VIDEOS_LINK_XPATH = "//*[@id='angular-raw']/header/ul/li[3]/ul/li[3]/a"
 
 # obr data
+# note: predefining leg 9 because someone is confused on leg 8, tagging as 9
+leg_9_obr = {
+    'team-akzonobel': 'Brian Carlin',
+    'dongfeng-race-team': 'Jérémie Lecaudey',
+    'mapfre': u'Ugo Fonollá',
+    'team-sun-hung-kai-scallywag': 'Richard Edwards',
+    'turn-the-tide-on-plastic': 'James Blake',
+    'team-brunel': 'Sam Greenfield',
+    'vestas-11th-hour-racing': 'Martin Keruzoré',
+}
 leg_8_obr = {
     'team-akzonobel': 'Brian Carlin',
     'dongfeng-race-team': 'Jérémie Lecaudey',
@@ -133,6 +143,7 @@ obr = {
     'leg-06': leg_6_obr,
     'leg-07': leg_7_obr,
     'leg-08': leg_8_obr,
+    'leg-09': leg_9_obr,
 }
 
 # team data
@@ -156,6 +167,8 @@ pretty_leg = {
     'leg-05': '5',
     'leg-06': '6',
     'leg-07': '7',
+    'leg-08': '8',
+    'leg-09': '9',
 }
 
 # Google Sheets API access
@@ -202,10 +215,10 @@ def main():
     browser.get(url)
 
     # temporary popup window for statement after the loss of John Fisher :-(
-    close_bt_link = browser.find_element_by_xpath('//*[@id="close-bt"]')
-    if close_bt_link:
-        close_bt_link.click()
-        time.sleep(3)
+#     close_bt_link = browser.find_element_by_xpath('//*[@id="close-bt"]')
+#     if close_bt_link:
+#         close_bt_link.click()
+#         time.sleep(3)
 
     enable_video_link = browser.find_element_by_xpath(ENABLE_VIDEOS_LINK_XPATH)
     if enable_video_link and enable_video_link.is_enabled():
