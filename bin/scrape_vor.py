@@ -192,10 +192,10 @@ def main():
     browser.get(url)
 
     # temporary popup window for statement after the loss of John Fisher :-(
-    close_bt_link = browser.find_element_by_xpath('//*[@id="close-bt"]')
-    if close_bt_link:
-        close_bt_link.click()
-        time.sleep(3)
+    # close_bt_link = browser.find_element_by_xpath('//*[@id="close-bt"]')
+    # if close_bt_link:
+    #    close_bt_link.click()
+    #    time.sleep(3)
 
     enable_video_link = browser.find_element_by_xpath(ENABLE_VIDEOS_LINK_XPATH)
     if enable_video_link and enable_video_link.is_enabled():
